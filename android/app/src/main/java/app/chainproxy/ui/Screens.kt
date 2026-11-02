@@ -271,7 +271,7 @@ fun SettingsScreen() {
     var picking by remember { mutableStateOf(false) }
     var updateText by remember { mutableStateOf("") }
     var updateInfo by remember { mutableStateOf<UpdateChecker.Info?>(null) }
-    fun edit(c: ChainConfig) { cfg = c; saved = false }
+    fun edit(c: ChainConfig) { cfg = c; ConfigStore.save(ctx, c); saved = true }      // every change is stored at once: leaving the tab without Save used to lose it
 
     if (picking) {
         AppPicker(cfg.splitApps.toSet(), onDone = { edit(cfg.copy(splitApps = it.sorted())); picking = false })

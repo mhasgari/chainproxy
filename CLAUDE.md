@@ -9,7 +9,7 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (2026-11-01; desktop 1.3.3, Android 0.2.7)
+## Verified state (2026-11-01; desktop 1.3.3, Android 0.2.8)
 Desktop: `make check` PASS (lint, 47 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM (1.3.3): deploy,
 install, unit, e2e (real sing-box), GUI (smoke + tray on the real desktop, first time since 1.3.1: the VM was logged on) and
 `vm-installer-full` PASS. 1.3.3 = the phone-found fixes ported: exit nodes the PC cannot reach directly are kept when a first hop exists
