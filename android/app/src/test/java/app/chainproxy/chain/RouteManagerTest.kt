@@ -102,6 +102,13 @@ class AndroidConfigTest {
         assertEquals("sniff", ((rules[0] as JsonObject)["action"] as kotlinx.serialization.json.JsonPrimitive).content)
     }
 
+    @Test fun dnsStrategyFollowsTheSettingAndFallsBackToIpv4Only() {
+        fun strategy(c: ChainConfig) = (((androidConfig(c, a, b)["dns"]) as JsonObject)["strategy"] as kotlinx.serialization.json.JsonPrimitive).content
+        assertEquals("ipv4_only", strategy(ChainConfig()))
+        assertEquals("prefer_ipv6", strategy(ChainConfig(dnsStrategy = "prefer_ipv6")))
+        assertEquals("ipv4_only", ChainConfig(dnsStrategy = "nonsense").normalized().dnsStrategy)
+    }
+
     @Test fun quicIsRefusedSoAppsFallBackToTcp() {
         val rules = (androidConfig(ChainConfig(), a, b)["route"] as JsonObject)["rules"] as kotlinx.serialization.json.JsonArray
         val quic = rules.map { it as JsonObject }.single { (it["port"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "443" }

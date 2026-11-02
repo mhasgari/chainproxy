@@ -45,6 +45,11 @@
     <string name="update_failed">Update check failed: %1$s</string>
     <string name="copy_log">Copy log</string>
     <string name="clear_log">Clear log</string>
+    <string name="dns_strategy">DNS address type</string>
+    <string name="dns_strategy_hint">Applies at the next connect. If an app (e.g. Chrome) hangs, keep IPv4 only.</string>
+    <string name="dns_ipv4_only">IPv4 only (default)</string>
+    <string name="dns_prefer_ipv4">Prefer IPv4, allow IPv6</string>
+    <string name="dns_prefer_ipv6">Prefer IPv6, then IPv4</string>
     <string name="update_source">Update source</string>
     <string name="update_source_hint">Optional: a repository with the same release layout. Updates go through Chain Proxy itself when it is connected.</string>
     <string name="vpn_needed">The VPN permission is needed to route the traffic.</string>

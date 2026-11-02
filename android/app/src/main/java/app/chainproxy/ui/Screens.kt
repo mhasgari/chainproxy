@@ -312,6 +312,14 @@ fun SettingsScreen() {
             }
             if (cfg.splitMode != "all") OutlinedButton(onClick = { picking = true }) { Text(stringResource(R.string.choose_apps, cfg.splitApps.size)) }
         }
+        SectionCard(Icons.Filled.Dns, stringResource(R.string.dns_strategy), stringResource(R.string.dns_strategy_hint)) {
+            for ((mode, label) in listOf("ipv4_only" to R.string.dns_ipv4_only, "prefer_ipv4" to R.string.dns_prefer_ipv4, "prefer_ipv6" to R.string.dns_prefer_ipv6)) {
+                Row(full.selectable(cfg.dnsStrategy == mode, onClick = { edit(cfg.copy(dnsStrategy = mode)) }), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(cfg.dnsStrategy == mode, onClick = { edit(cfg.copy(dnsStrategy = mode)) })
+                    Text(stringResource(label), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
         SectionCard(Icons.Filled.Info, stringResource(R.string.update_source), stringResource(R.string.update_source_hint)) {
             OutlinedTextField(cfg.updateRepo, { edit(cfg.copy(updateRepo = it.trim())) }, full,
                 label = { Text("owner/name") }, singleLine = true, shape = MaterialTheme.shapes.medium)

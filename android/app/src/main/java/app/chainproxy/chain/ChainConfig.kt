@@ -44,6 +44,8 @@ data class ChainConfig(
     // Android only: per-app split tunnelling. "all" = every app, "include" = only the listed apps, "exclude" = all but them.
     @SerialName("split_mode") val splitMode: String = "all",
     @SerialName("split_apps") val splitApps: List<String> = emptyList(),
+    // Android only: which address families the phone's DNS answers: ipv4_only | prefer_ipv4 | prefer_ipv6.
+    @SerialName("dns_strategy") val dnsStrategy: String = "ipv4_only",
 ) {
     /** Values normalized the way load_cfg does (bare hosts become https URLs). */
     fun normalized() = copy(
@@ -51,11 +53,14 @@ data class ChainConfig(
         checkUrls = checkUrls.map(::normalizeUrl).filter { it.isNotEmpty() },
         geoFallbackUrls = geoFallbackUrls.map(::normalizeUrl).filter { it.isNotEmpty() },
         geoUrl = normalizeUrl(geoUrl),
+        dnsStrategy = if (dnsStrategy in DNS_STRATEGIES) dnsStrategy else "ipv4_only",
     )
 
     fun toJson(): String = codec.encodeToString(this)
 
     companion object {
+        val DNS_STRATEGIES = listOf("ipv4_only", "prefer_ipv4", "prefer_ipv6")
+
         /** The public "best" list of the GeminiRoute project: the default exit hop, same as on the desktop. */
         const val DEFAULT_EXIT_SUBSCRIPTION = "https://alizn7.github.io/GeminiRoute/sub/best.txt"
 

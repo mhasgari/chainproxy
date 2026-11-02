@@ -44,6 +44,11 @@
     <string name="update_failed">بررسی نسخه ناموفق بود: %1$s</string>
     <string name="copy_log">کپی گزارش</string>
     <string name="clear_log">پاک‌کردن گزارش</string>
+    <string name="dns_strategy">نوع آدرس DNS</string>
+    <string name="dns_strategy_hint">از اتصال بعدی اعمال می‌شود. اگر برنامه‌ای (مثل Chrome) گیر کرد، «فقط IPv4» را نگه دارید.</string>
+    <string name="dns_ipv4_only">فقط IPv4 (پیش‌فرض)</string>
+    <string name="dns_prefer_ipv4">اولویت IPv4، IPv6 هم مجاز</string>
+    <string name="dns_prefer_ipv6">اولویت IPv6 و بعد IPv4</string>
     <string name="update_source">منبع به‌روزرسانی</string>
     <string name="update_source_hint">اختیاری: مخزنی با همان ساختار انتشار. وقتی Chain Proxy وصل است، به‌روزرسانی از راه خود آن انجام می‌شود.</string>
     <string name="vpn_needed">برای عبور ترافیک، مجوز VPN لازم است.</string>

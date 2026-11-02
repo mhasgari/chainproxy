@@ -106,7 +106,7 @@ fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, 
         }
         put("rules", dnsRules)
         put("final", "remote")
-        put("strategy", "ipv4_only")          // the chains exit over IPv4; an AAAA answer only sends Chrome down a path that hangs
+        put("strategy", cfg.dnsStrategy)       // ipv4_only is the default: the chains usually exit over IPv4 and an AAAA answer made Chrome hang
     }
     val log = buildJsonObject {                                  // a file, so the app can show the core's warnings in its Log tab
         put("level", cfg.logLevel); put("timestamp", true)

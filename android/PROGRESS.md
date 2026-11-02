@@ -96,3 +96,4 @@ goes to `dist/` for the user's phone. Keystore stays out of git.
   foreground (`am start`) before testing from `run-as`. The real service is a foreground service, so it is fine.
   NOT verified: arm64 binary (built only), a real phone, Lantern while the app's own VPN is active.
 - 2026-11-02 0.2.6: Chrome / Gemini app failed on the Lantern+exit chain (Firefox fine). Fixed on the user's phone by DNS strategy ipv4_only (AAAA answers sent Chrome down a path that hung); UDP/443 (QUIC) is also rejected so Google apps fall back to TCP; sing-box WARN/ERROR lines go to the Log tab as `core:` (log file in files/core). Emulator: tests pass; phone: user confirmed Chrome, Gemini site and app open.
+- 2026-11-02 0.2.7: new setting dns_strategy (ipv4_only default | prefer_ipv4 | prefer_ipv6) so the user can try IPv6 on the phone; default unchanged. Emulator tests + unit test pass; the IPv6 modes are not tested on a phone.
