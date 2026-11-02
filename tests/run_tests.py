@@ -376,6 +376,8 @@ class RobustnessTests(unittest.TestCase):
         self.assertTrue(d["lantern_enabled"])
         self.assertTrue(d["auto_update"])
         self.assertTrue(d["close_to_tray"])
+        self.assertEqual(d["auto_rescans"], 2)
+        self.assertEqual(d["exit_extra_unreachable"], 12)
 
     def test_ports_avoid_common_tools_and_legacy_values_move(self):
         d = self.chain.DEFAULTS
@@ -604,6 +606,80 @@ class RobustnessTests(unittest.TestCase):
         cfg["strict_urls"] = []
         cfg["blocked_countries"] = ["DE"]
         self.assertEqual(c.verify(cfg), (False, "exit in blocked country (5.6.7.8 DE)"))
+
+    def patch(self, obj, name, value):
+        old = getattr(obj, name)
+        setattr(obj, name, value)
+        self.addCleanup(setattr, obj, name, old)
+
+    def test_pick_keeps_unreachable_exit_nodes_when_asked(self):
+        c = self.chain
+        nodes = [(f"n{i}", {"type": "socks", "server": f"h{i}", "server_port": i}) for i in range(1, 7)]
+        up = {"h2": 30.0, "h5": 10.0}
+        self.patch(c, "tcp_ms", lambda ob, timeout: up.get(ob["server"]))
+        plain = c.pick(nodes, 5, 1.0, "B")
+        self.assertEqual([n for n, _ in plain.values()], ["n5", "n2"])           # default: dead ones are dropped
+        wide = c.pick(nodes, 5, 1.0, "B", extra_unreachable=3)
+        self.assertEqual([n for n, _ in wide.values()], ["n5", "n2", "n1", "n3", "n4"])
+        self.assertEqual(list(wide), ["B1", "B2", "B3", "B4", "B5"])
+        none_up = {}
+        self.patch(c, "tcp_ms", lambda ob, timeout: none_up.get(ob["server"]))
+        every = c.pick(nodes, 4, 1.0, "B", extra_unreachable=3)                 # nothing reachable: all kept once
+        self.assertEqual([n for n, _ in every.values()], ["n1", "n2", "n3", "n4"])
+
+    def test_pick_validator_also_filters_the_extra_nodes(self):
+        c = self.chain
+        nodes = [(f"n{i}", {"type": "socks", "server": f"h{i}", "server_port": i}) for i in range(1, 6)]
+        self.patch(c, "tcp_ms", lambda ob, timeout: 5.0 if ob["server"] == "h1" else None)
+        r = c.pick(nodes, 2, 1.0, "B", validator=lambda ob: ob["server"] != "h3", extra_unreachable=3)
+        self.assertEqual([n for n, _ in r.values()], ["n1", "n2", "n4"])
+
+    def test_verify_retries_a_site_that_gave_no_answer_once(self):
+        c = self.chain
+        cfg = c.load_cfg()
+        cfg["strict_urls"] = ["https://slow.test/"]
+        cfg["geo_url"] = ""
+        seen = []
+
+        def fake(url, port, timeout=12, **kw):
+            seen.append(url)
+            return (None, b"") if len(seen) == 1 else (200, b"x")
+        self.patch(c, "via_proxy", fake)
+        self.assertEqual(c.verify(cfg), (True, "exit IP unknown"))
+        self.assertEqual(len(seen), 2)
+
+    def test_start_scans_again_by_itself_when_nothing_passes(self):
+        c = self.chain
+        builds = []
+        orig = c.App.build_rank
+
+        def counting(app, *a, **kw):
+            builds.append(1)
+            return orig(app, *a, **kw)
+        self.patch(c.App, "build_rank", counting)
+        self.patch(c, "verify", lambda cfg: (len(builds) >= 3, "mock exit"))     # passes from the 2nd re-scan on
+        cfg = c.load_cfg()
+        self.assertEqual(cfg["auto_rescans"], 2)
+        app = c.start_session(cfg)
+        self.addCleanup(app.cleanup)
+        self.assertGreaterEqual(app.idx, 0)
+        self.assertEqual(len(builds), 3)
+
+    def test_no_automatic_rescan_when_switched_off(self):
+        c = self.chain
+        builds = []
+        orig = c.App.build_rank
+
+        def counting(app, *a, **kw):
+            builds.append(1)
+            return orig(app, *a, **kw)
+        self.patch(c.App, "build_rank", counting)
+        self.patch(c, "verify", lambda cfg: (False, "mock rejected"))
+        cfg = c.load_cfg()
+        cfg["auto_rescans"] = 0
+        with self.assertRaises(SystemExit):
+            c.start_session(cfg)
+        self.assertEqual(len(builds), 1)
 
     def test_rank_by_speed_option(self):
         c = self.chain

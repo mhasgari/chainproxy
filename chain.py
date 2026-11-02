@@ -15,7 +15,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 import atexit
 import base64
@@ -67,6 +67,8 @@ DEFAULTS = {
     "control_port": 42817,
     "top_k": 5,                      # how many nodes of the first-hop subscription to try
     "top_k_exit": 12,                # how many nodes of the exit-hop subscription (many of them are dead or slow)
+    "exit_extra_unreachable": 12,    # with a first hop: exit nodes the PC cannot reach directly that are still tried through it (0 = off)
+    "auto_rescans": 2,               # when no route passes verification at start: scan again this many times before giving up
     "tcp_timeout": 3.0,
     "delay_timeout_ms": 7000,
     "check_urls": ["https://www.gstatic.com/generate_204",
@@ -396,21 +398,30 @@ def tcp_ms(ob, timeout):
         return None
 
 
-def pick(nodes, k, timeout, prefix, validator=None, start=1):
+def pick(nodes, k, timeout, prefix, validator=None, start=1, extra_unreachable=0):
+    """The k fastest reachable nodes, tagged prefix+number. `extra_unreachable`: that many nodes whose direct
+    probe FAILED are kept after them - a node behind a first hop is dialled from that hop's server, so this
+    PC not reaching it directly says nothing about the chain (filtered networks keep only a few nodes otherwise)."""
     with ThreadPoolExecutor(64) as ex:
         ms = list(ex.map(lambda n: tcp_ms(n[1], timeout), nodes))
     scored = sorted([(m, n) for m, n in zip(ms, nodes) if m is not None],
                     key=lambda x: x[0])
     ordered = [n for _, n in scored]
+    tail = []
     if not ordered:                     # direct TCP probing may be filtered: let the
         ordered = list(nodes)           # end-to-end test decide
-    chosen = ordered[:k]
+    elif extra_unreachable > 0:
+        tail = [n for m, n in zip(ms, nodes) if m is None][:extra_unreachable]
+        log(f"[{prefix}] {len(scored)} of {len(nodes)} reachable directly; {len(tail)} more kept for the chain test")
+    chosen = ordered[:k] + tail
     if validator:                       # drop nodes the sing-box core refuses to load
         pool = ordered[:max(k * 3, k)]
         with ThreadPoolExecutor(4) as ex:
-            good = [n for n, ok in zip(pool, ex.map(lambda n: validator(n[1]), pool)) if ok]
-        if good:
-            chosen = good[:k]
+            checks = list(ex.map(lambda n: validator(n[1]), pool + tail))
+        good = [n for n, ok in zip(pool, checks) if ok][:k]
+        good_tail = [n for n, ok in zip(tail, checks[len(pool):]) if ok]
+        if good or good_tail:
+            chosen = good + good_tail
         else:
             log(f"[{prefix}] core check rejected every candidate; using them unvalidated")
     return {f"{prefix}{start + i}": n for i, n in enumerate(chosen)}
@@ -1159,6 +1170,12 @@ def geo_lookup(cfg):
     return None
 
 
+def via_proxy_retry(*args, **kw):
+    """via_proxy, once more when there was no answer at all (a two-hop route is sometimes just slow once)."""
+    r = via_proxy(*args, **kw)
+    return r if r[0] is not None else via_proxy(*args, **kw)
+
+
 def verify(cfg):
     """Exit-country check + strict sites (in parallel). Returns (ok, info)."""
     port, to = cfg["mixed_port"], cfg["verify_timeout"]
@@ -1167,7 +1184,7 @@ def verify(cfg):
         geo_f = ex.submit(geo_lookup, cfg) if cfg.get("geo_url") else None
         # a Gemini page can answer 200 yet be the "not available in your location" app: its
         # country value sits ~135 KB into the page, so those pages are read further
-        site_f = [(u, ex.submit(via_proxy, u, port, to, **({"limit": 300000, "until": GOOGLE_COUNTRY} if "gemini.google" in u else {})))
+        site_f = [(u, ex.submit(via_proxy_retry, u, port, to, **({"limit": 300000, "until": GOOGLE_COUNTRY} if "gemini.google" in u else {})))
                   for u in strict]
         geo = geo_f.result() if geo_f else None
         sites = [(u, *f.result()) for u, f in site_f]
@@ -1516,7 +1533,9 @@ def start_session(cfg):
         tcp = cfg["tcp_timeout"]
         A_sub = pick(A_nodes, cfg["top_k"], tcp, "A", validator) if A_nodes else {}
         A_prof = pick(prof_a, cfg["top_k_profiles"], tcp, "A", validator, start=101) if prof_a else {}
-        B_sub = pick(B_nodes, cfg["top_k_exit"], tcp, "B", validator) if B_nodes else {}
+        has_first_hop = bool(lantern or A_nodes or prof_a)      # the exit hop is dialled from the first hop's server
+        B_sub = pick(B_nodes, cfg["top_k_exit"], tcp, "B", validator,
+                     extra_unreachable=cfg["exit_extra_unreachable"] if has_first_hop else 0) if B_nodes else {}
         B_prof = pick(prof_b, cfg["top_k_profiles"], tcp, "B", validator, start=101) if prof_b else {}
         A, B, tier = {}, {}, {}
         if lantern:
@@ -1571,6 +1590,12 @@ def start_session(cfg):
         log("sing-box started, testing routes ...")
         app.build_rank(A, B)
         log(app.go(1))
+        # scans on a noisy network vary from run to run: look again before giving up
+        for n in range(1, cfg["auto_rescans"] + 1):
+            if app.idx >= 0 or app.stop_evt.is_set():
+                break
+            log(f"nothing usable yet, scanning again ({n}/{cfg['auto_rescans']}) ...")
+            log(app.rescan())
         if app.idx < 0:
             raise SystemExit("no route available")
         sys_proxy_set(cfg["mixed_port"], cfg["bypass"])

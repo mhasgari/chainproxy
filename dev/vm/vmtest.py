@@ -120,7 +120,7 @@ def need(*keys):
 # ------------------------------------------------------------------ process helpers
 def run(cmd, check=True, timeout=None, input=None):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, input=input)
+        r = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout, input=input)
     except FileNotFoundError:
         die(f"command not found: {cmd[0]}")
     except subprocess.TimeoutExpired:

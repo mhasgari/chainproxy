@@ -7,6 +7,7 @@ GUI smoke test (tkinter) against the mock core.
 Drives the real window: Enable -> Next -> pick a route -> follow a CLI 'next' ->
 Disable -> Enable again -> close. Message boxes are captured instead of shown.
 """
+import re
 import sys
 import time
 import tkinter as tk
@@ -28,6 +29,7 @@ def check(cond, msg):
 def main():
     env = Env()
     dialogs = []
+    state = {}
     messagebox.showerror = lambda title, msg, **k: dialogs.append(msg)
     sys.modules.pop("gui", None)
     import gui                                   # imports the env's chain module
@@ -82,11 +84,13 @@ def main():
         check(g.log_open and g.log_frame.winfo_ismapped(), "the log header expands the log")
         g.toggle_log()
         reply = env.chain.control_send(cfg, "next", 30)
+        state["cli_reply"] = reply or ""
         check(bool(reply) and reply.startswith("["), f"CLI next while window open -> {reply!r}")
         root.after(1500, s_follow)
 
     def s_follow():
-        check(g.exit_var.get().startswith("Route 1 of"), f"window follows CLI -> {g.exit_var.get()!r}")
+        n, m = re.match(r"\[(\d+)/(\d+)\]", state["cli_reply"]).groups()      # the route number depends on how many routes exist
+        check(g.exit_var.get().startswith(f"Route {n} of {m}"), f"window follows CLI -> {g.exit_var.get()!r}")
         g.toggle()
         wait_idle(s_after_disable, 600)
 
