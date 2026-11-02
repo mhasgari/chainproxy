@@ -9,7 +9,7 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (2026-11-01; desktop 1.3.3, Android 0.2.5)
+## Verified state (2026-11-01; desktop 1.3.3, Android 0.2.6)
 Desktop: `make check` PASS (lint, 47 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM (1.3.3): deploy,
 install, unit, e2e (real sing-box), GUI (smoke + tray on the real desktop, first time since 1.3.1: the VM was logged on) and
 `vm-installer-full` PASS. 1.3.3 = the phone-found fixes ported: exit nodes the PC cannot reach directly are kept when a first hop exists
@@ -19,6 +19,7 @@ first run without `offline/`, and 1.3.3 on a real filtered network (the extra-no
 Android: 22+ JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1, 0.2.0, 0.2.2 and 0.2.4 were
 tested on the user's phone (0.2.4 fixed the first-start failures: keep-alive tunnel reuse, wider exit pool, auto re-scan); 0.2.5 (clear-log
 button, LTR auto-scrolling log, update check/download through the local proxy first + update-source field) only on the emulator.
+0.2.6 (DNS ipv4_only + UDP/443 reject, `core:` log lines) fixed Chrome / Gemini app failing on the Lantern+exit chain; user confirmed on the phone.
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with

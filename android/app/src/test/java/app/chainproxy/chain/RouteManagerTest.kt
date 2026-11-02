@@ -101,4 +101,11 @@ class AndroidConfigTest {
         val rules = (conf["route"] as JsonObject)["rules"] as kotlinx.serialization.json.JsonArray
         assertEquals("sniff", ((rules[0] as JsonObject)["action"] as kotlinx.serialization.json.JsonPrimitive).content)
     }
+
+    @Test fun quicIsRefusedSoAppsFallBackToTcp() {
+        val rules = (androidConfig(ChainConfig(), a, b)["route"] as JsonObject)["rules"] as kotlinx.serialization.json.JsonArray
+        val quic = rules.map { it as JsonObject }.single { (it["port"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "443" }
+        assertEquals("udp", (quic["network"] as kotlinx.serialization.json.JsonPrimitive).content)
+        assertEquals("reject", (quic["action"] as kotlinx.serialization.json.JsonPrimitive).content)
+    }
 }

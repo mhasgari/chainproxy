@@ -72,7 +72,7 @@ fun buildConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, mo
  * sniffing (so domain rules work for IP connections), DNS hijack, and name resolution THROUGH the chain
  * (the system resolver would leak the lookups). Sites that go direct (".ir") are resolved locally.
  */
-fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>): JsonObject {
+fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, logFile: String? = null): JsonObject {
     val base = buildConfig(cfg, a, b, modern = true)
     val tun = buildJsonObject {
         put("type", "tun"); put("tag", "tun-in")
@@ -86,6 +86,8 @@ fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>):
     val rules = buildJsonArray {
         add(buildJsonObject { put("action", "sniff") })
         add(buildJsonObject { put("protocol", "dns"); put("action", "hijack-dns") })
+        // QUIC (UDP 443) cannot go through a SOCKS/TCP-based chain; refusing it makes Chrome and Google apps fall back to TCP at once
+        add(buildJsonObject { put("network", "udp"); put("port", 443); put("action", "reject") })
         (route.getValue("rules") as JsonArray).forEach { add(it) }
     }
     val dnsRules = buildJsonArray {
@@ -104,8 +106,14 @@ fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>):
         }
         put("rules", dnsRules)
         put("final", "remote")
+        put("strategy", "ipv4_only")          // the chains exit over IPv4; an AAAA answer only sends Chrome down a path that hangs
+    }
+    val log = buildJsonObject {                                  // a file, so the app can show the core's warnings in its Log tab
+        put("level", cfg.logLevel); put("timestamp", true)
+        if (logFile != null) { put("output", logFile) }
     }
     return JsonObject(base + mapOf(
+        "log" to log,
         "inbounds" to JsonArray(listOf(tun) + (base.getValue("inbounds") as JsonArray)),
         "route" to JsonObject(route + mapOf("rules" to rules, "auto_detect_interface" to JsonPrimitive(true))),
         "dns" to dns,

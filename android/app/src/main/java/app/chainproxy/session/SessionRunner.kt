@@ -116,7 +116,9 @@ class SessionRunner(
         if (a.isEmpty() && b.isEmpty()) return "No usable nodes: check the subscription links / profiles" +
             (lan?.error?.takeIf { it.isNotEmpty() }?.let { " (Lantern: $it)" } ?: "")
 
-        startCore(androidConfig(cfg, a, b).toString())
+        val coreLog = File(ctx.filesDir, "core/sing-box.log").apply { parentFile?.mkdirs(); delete() }
+        startCore(androidConfig(cfg, a, b, coreLog.path).toString())
+        scope.launch { tailCoreLog(coreLog) }
         log("sing-box started, testing routes ...")
         val api = ClashApi(cfg.apiPort)
         var up = false
@@ -140,6 +142,33 @@ class SessionRunner(
         AppState.setSummary(msg)
         scope.launch { watchdog(rm) }
         return null
+    }
+
+    /** Shows the core's own warnings/errors (failed connections, DNS errors) in the Log tab; they explain what an app like Chrome hits. */
+    private suspend fun tailCoreLog(f: File) {
+        var pos = 0L
+        val seen = HashMap<String, Int>()
+        while (scope.isActive) {
+            delay(2000)
+            val lines = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (!f.exists() || f.length() < pos) { pos = 0; return@runCatching emptyList<String>() }
+                    java.io.RandomAccessFile(f, "r").use { r ->
+                        r.seek(pos)
+                        val buf = ByteArray(minOf(65536L, f.length() - pos).toInt())
+                        r.readFully(buf); pos += buf.size
+                        String(buf, Charsets.UTF_8).lines().filter { it.isNotBlank() }
+                    }
+                }.getOrDefault(emptyList())
+            }
+            var shown = 0
+            for (l in lines) {
+                if (" ERROR " !in l && " WARN " !in l) continue
+                val key = l.substringAfter("] ", l).take(120)       // an identical error is shown a few times only
+                val n = (seen[key] ?: 0) + 1; seen[key] = n
+                if (n <= 3 && shown++ < 30) log("core: " + l.substringAfter(" ").take(200))
+            }
+        }
     }
 
     private suspend fun watchdog(rm: RouteManager) {
