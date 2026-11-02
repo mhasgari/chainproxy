@@ -16,10 +16,11 @@ install, unit, e2e (real sing-box), GUI (smoke + tray on the real desktop, first
 (`exit_extra_unreachable`), `auto_rescans` (2) before "no route available", one retry of a strict site with no answer. The desktop never
 had the Android keep-alive bug (urllib opens a new connection per request). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine
 first run without `offline/`, and 1.3.3 on a real filtered network (the extra-nodes path is unit-tested only; the lab has no unreachable nodes).
-Android: 22+ JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1, 0.2.0, 0.2.2 and 0.2.4 were
+Android: 22+ JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1, 0.2.0, 0.2.2, 0.2.4 and 0.2.6-0.2.8 were
 tested on the user's phone (0.2.4 fixed the first-start failures: keep-alive tunnel reuse, wider exit pool, auto re-scan); 0.2.5 (clear-log
 button, LTR auto-scrolling log, update check/download through the local proxy first + update-source field) only on the emulator.
-0.2.6 (DNS ipv4_only + UDP/443 reject, `core:` log lines; 0.2.7 adds the dns_strategy setting) fixed Chrome / Gemini app failing on the Lantern+exit chain; user confirmed on the phone.
+0.2.6 (DNS ipv4_only + UDP/443 reject, `core:` log lines) fixed Chrome / Gemini app failing on the Lantern+exit chain; user confirmed on the phone.
+0.2.7 added the `dns_strategy` setting: on the phone BOTH IPv6 modes fail on every route of that chain (keep ipv4_only); 0.2.8 saves every Settings edit at once (the 0.2.7 value reverted because Save had not been pressed). The lab has no DNS/IPv6, so these only show on the phone.
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with
@@ -52,7 +53,7 @@ This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps 
 - `make installer` / `python3 dev/make_installer.py` - builds `dist/ChainProxy-Setup-<ver>.exe` with Inno Setup 6 INSIDE the VM (installer/chainproxy.iss; Inno comes from github.com/jrsoftware/issrc releases, check its signature). `make pdf` rebuilds the quick-start PDF; rebuild BEFORE the zip/installer.
 - `make lantern` builds the Lantern engine zip (Go, pinned radiance commit, no C compiler needed for Windows); `make vm-lantern` runs the real engine in the VM (internet); `make vm-update` tests the self-update against a fake release server on the host.
 - `make vm-clean` - removes EVERYTHING the project put into the VM (test copy, installed app, installers, shortcuts, Python, Inno Setup, proxy settings; keeps sshd/key/autologon). `make vm-clean-light` keeps Python + Inno. `make vm-installer` / `vm-installer-full` test a built installer (install, first run, upgrade, uninstall); run `vm-clean` first for a true clean-machine test and again afterwards.
-- `/vm-test`, `/check`, `/release` slash commands wrap the above; `/android` checks the Android build tools and continues the Android app (state: `android/PROGRESS.md`, design: ADR "Android app (in progress)")
+- `/vm-test`, `/check`, `/release` slash commands wrap the above; `/finalize` = review + tests + ADR/memory + index + commit + push; `/android` checks the Android build tools and continues the Android app (state: `android/PROGRESS.md`, design: ADR "Android app (in progress)")
 
 ## When to test where
 - Pure Python logic (parsing, ranking, config): `make test`; add a unit test.
