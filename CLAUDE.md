@@ -9,18 +9,19 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (2026-11-01; desktop 1.3.3, Android 0.2.8)
+## Verified state (2026-11-03; desktop 1.3.3, Android 0.2.13)
 Desktop: `make check` PASS (lint, 47 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM (1.3.3): deploy,
 install, unit, e2e (real sing-box), GUI (smoke + tray on the real desktop, first time since 1.3.1: the VM was logged on) and
 `vm-installer-full` PASS. 1.3.3 = the phone-found fixes ported: exit nodes the PC cannot reach directly are kept when a first hop exists
 (`exit_extra_unreachable`), `auto_rescans` (2) before "no route available", one retry of a strict site with no answer. The desktop never
 had the Android keep-alive bug (urllib opens a new connection per request). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine
 first run without `offline/`, and 1.3.3 on a real filtered network (the extra-nodes path is unit-tested only; the lab has no unreachable nodes).
-Android: 22+ JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1, 0.2.0, 0.2.2, 0.2.4 and 0.2.6-0.2.8 were
+Android: 23+ JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1, 0.2.0, 0.2.2, 0.2.4 and 0.2.6-0.2.8 and 0.2.13 were
 tested on the user's phone (0.2.4 fixed the first-start failures: keep-alive tunnel reuse, wider exit pool, auto re-scan); 0.2.5 (clear-log
 button, LTR auto-scrolling log, update check/download through the local proxy first + update-source field) only on the emulator.
 0.2.6 (DNS ipv4_only + UDP/443 reject, `core:` log lines) fixed Chrome / Gemini app failing on the Lantern+exit chain; user confirmed on the phone.
 0.2.7 added the `dns_strategy` setting: on the phone BOTH IPv6 modes fail on every route of that chain (keep ipv4_only); 0.2.8 saves every Settings edit at once (the 0.2.7 value reverted because Save had not been pressed). The lab has no DNS/IPv6, so these only show on the phone.
+0.2.13 (phone-confirmed): libbox is patched at build time (`apply_patches` in dev/android/build_libbox.py) so the REALITY client keeps X25519MLKEM768; new Xray servers rejected the stripped hello (`reality verification failed`). Settings Save button removed; Log shows `[B profiles]`, `no answer to the delay test` + cause, `[diag] Bn` (loopback diag inbound per exit node).
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with

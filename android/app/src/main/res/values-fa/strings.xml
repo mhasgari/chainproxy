@@ -34,8 +34,7 @@
     <string name="choose_apps">انتخاب برنامه‌ها (%1$d انتخاب شده)</string>
     <string name="search">جستجو</string>
     <string name="done">تمام</string>
-    <string name="save">ذخیره</string>
-    <string name="saved">ذخیره شد. در اتصال بعدی اعمال می‌شود.</string>
+    <string name="autosave_note">تغییرات بلافاصله ذخیره می‌شوند و در اتصال بعدی اعمال می‌شوند.</string>
     <string name="about">دربارهٔ برنامه</string>
     <string name="update_check">بررسی نسخهٔ جدید</string>
     <string name="update_none">آخرین نسخه را دارید.</string>

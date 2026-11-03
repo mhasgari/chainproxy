@@ -27,12 +27,18 @@ class ClashApi(private val port: Int) : CoreApi {
                     c.setRequestProperty("Content-Type", "application/json")
                     c.outputStream.use { it.write(body.toByteArray()) }
                 }
-                if (c.responseCode >= 400) throw java.io.IOException("HTTP ${c.responseCode}")
+                if (c.responseCode >= 400) {
+                    val msg = runCatching { c.errorStream?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull().orEmpty()
+                    throw java.io.IOException("HTTP ${c.responseCode} ${msg.take(300)}".trim())
+                }
                 c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
             } finally {
                 c.disconnect()
             }
         }
+
+    private val errors = java.util.concurrent.ConcurrentHashMap<String, String>()
+    override fun lastError(tag: String): String? = errors[tag]
 
     suspend fun version(): String = call("GET", "/version", timeoutMs = 2000)
 
@@ -40,6 +46,7 @@ class ClashApi(private val port: Int) : CoreApi {
         val text = call("GET", "/proxies/${enc(tag)}/delay?url=${enc(url)}&timeout=$timeoutMs", timeoutMs = timeoutMs + 4000)
         Json.parseToJsonElement(text).jsonObject["delay"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
     } catch (e: Exception) {
+        errors[tag] = e.message ?: e.javaClass.simpleName
         null
     }
 

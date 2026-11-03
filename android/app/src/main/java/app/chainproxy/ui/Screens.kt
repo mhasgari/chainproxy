@@ -267,11 +267,10 @@ fun SettingsScreen() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var cfg by remember { mutableStateOf(ConfigStore.load(ctx)) }
-    var saved by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var updateText by remember { mutableStateOf("") }
     var updateInfo by remember { mutableStateOf<UpdateChecker.Info?>(null) }
-    fun edit(c: ChainConfig) { cfg = c; ConfigStore.save(ctx, c); saved = true }      // every change is stored at once: leaving the tab without Save used to lose it
+    fun edit(c: ChainConfig) { cfg = c; ConfigStore.save(ctx, c) }      // every change is stored at once (there is no Save button)
 
     if (picking) {
         AppPicker(cfg.splitApps.toSet(), onDone = { edit(cfg.copy(splitApps = it.sorted())); picking = false })
@@ -324,8 +323,7 @@ fun SettingsScreen() {
             OutlinedTextField(cfg.updateRepo, { edit(cfg.copy(updateRepo = it.trim())) }, full,
                 label = { Text("owner/name") }, singleLine = true, shape = MaterialTheme.shapes.medium)
         }
-        Button(onClick = { ConfigStore.save(ctx, cfg); saved = true }, full.height(52.dp), shape = MaterialTheme.shapes.large) { Text(stringResource(R.string.save)) }
-        if (saved) Text(stringResource(R.string.saved), color = Ok, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.autosave_note), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         SectionCard(Icons.Filled.Info, stringResource(R.string.about), "Chain Proxy ${BuildConfig.VERSION_NAME}") {
             Text(stringResource(R.string.license_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(onClick = {

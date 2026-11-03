@@ -35,8 +35,7 @@
     <string name="choose_apps">Choose apps (%1$d selected)</string>
     <string name="search">Search</string>
     <string name="done">Done</string>
-    <string name="save">Save</string>
-    <string name="saved">Saved. Applies at the next connection.</string>
+    <string name="autosave_note">Changes are saved at once and apply at the next connection.</string>
     <string name="about">About</string>
     <string name="update_check">Check for updates</string>
     <string name="update_none">You have the latest version.</string>

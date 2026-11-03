@@ -28,6 +28,39 @@ def run(cmd, **kw):
     subprocess.run(cmd, check=True, **kw)
 
 
+# Patch applied to the pinned sing-box source before building. Newer Xray REALITY servers answer a ClientHello that has no
+# X25519MLKEM768 key share with the camouflage site, so sing-box failed with "reality verification failed" although the same
+# profile works in v2rayNG. sing-box strips that share (and curve) from every uTLS hello in the REALITY client; keep them.
+REALITY_FILE = "common/tls/reality_client.go"
+REALITY_STRIP = """	for _, extension := range uConn.Extensions {
+		if ce, ok := extension.(*utls.SupportedCurvesExtension); ok {
+			ce.Curves = common.Filter(ce.Curves, func(curveID utls.CurveID) bool {
+				return curveID != utls.X25519MLKEM768
+			})
+		}
+		if ks, ok := extension.(*utls.KeyShareExtension); ok {
+			ks.KeyShares = common.Filter(ks.KeyShares, func(share utls.KeyShare) bool {
+				return share.Group != utls.X25519MLKEM768
+			})
+		}
+	}
+	err = uConn.BuildHandshakeState()
+	if err != nil {
+		return nil, err
+	}
+"""
+
+
+def apply_patches(src):
+    f = src / REALITY_FILE
+    text = f.read_text()
+    if REALITY_STRIP in text:
+        f.write_text(text.replace(REALITY_STRIP, "").replace('\t"github.com/sagernet/sing/common"\n', "", 1))   # import no longer used
+        print("patched", REALITY_FILE, "(keep X25519MLKEM768 in the REALITY hello)")
+    elif "X25519MLKEM768" in text:
+        sys.exit(f"{REALITY_FILE}: expected code not found, update the patch")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arch", default="arm64,amd64", help="android ABIs: arm64 (phones), amd64 (emulator)")
@@ -51,6 +84,7 @@ def main():
     head = subprocess.run(["git", "-C", str(src), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     if head != SINGBOX_COMMIT:
         sys.exit(f"{src} is at {head}, expected {SINGBOX_COMMIT} ({SINGBOX_TAG})")
+    apply_patches(src)
     for tool in ("gomobile", "gobind"):
         if not (gobin / tool).exists():
             run(["go", "install", f"github.com/sagernet/gomobile/cmd/{tool}@{GOMOBILE}"], env=env)

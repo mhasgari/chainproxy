@@ -93,14 +93,16 @@ class SessionRunner(
         log("probing nodes ...")
         val t = cfg.tcpTimeout
         val aS = if (aNodes.isNotEmpty()) pick(aNodes, cfg.topK, t, "A", validator = ::valid) else emptyMap()
-        val aP = if (profA.isNotEmpty()) pick(profA, cfg.topKProfiles, t, "A", start = 101, validator = ::valid) else emptyMap()
+        val aP = if (profA.isNotEmpty()) pick(profA, cfg.topKProfiles, t, "A", start = 101, validator = ::valid,
+            note = { ok, _ -> log("[A profiles] $ok of ${profA.size} reachable directly (TCP)") }) else emptyMap()
         // With a first hop the exit nodes are dialled from ITS server: keep some the phone cannot reach directly.
         val hasFirstHop = cfg.lanternEnabled || aNodes.isNotEmpty() || profA.isNotEmpty()
         val bS = if (bNodes.isNotEmpty()) pick(bNodes, cfg.topKExit, t, "B", validator = ::valid,
             extraUnreachable = if (hasFirstHop) cfg.topKExit else 0,
             note = { ok, extra -> log("[B] $ok of ${bNodes.size} reachable directly; $extra more kept for the chain test") })
         else emptyMap()
-        val bP = if (profB.isNotEmpty()) pick(profB, cfg.topKProfiles, t, "B", start = 101, validator = ::valid) else emptyMap()
+        val bP = if (profB.isNotEmpty()) pick(profB, cfg.topKProfiles, t, "B", start = 101, validator = ::valid,
+            note = { ok, _ -> log("[B profiles] $ok of ${profB.size} reachable directly (TCP)") }) else emptyMap()
         val a = LinkedHashMap<String, Node>()
         val b = LinkedHashMap<String, Node>()
         val tier = HashMap<String, Int>()
@@ -129,6 +131,7 @@ class SessionRunner(
         routes = rm
         scope.launch { rm.rows.collect { AppState.setRows(it) } }
         rm.buildRank()
+        scope.launch { diagnoseProfiles(b, tier) }
         var msg = rm.go(1)
         log(msg)
         // Scans on a phone network are noisy (delay tests time out, Google answers slowly): look again before giving up.
@@ -167,6 +170,22 @@ class SessionRunner(
                 val key = l.substringAfter("] ", l).take(120)       // an identical error is shown a few times only
                 val n = (seen[key] ?: 0) + 1; seen[key] = n
                 if (n <= 3 && shown++ < 30) log("core: " + l.substringAfter(" ").take(200))
+            }
+        }
+    }
+
+    /** An exit PROFILE the delay test cannot reach: one direct request through it makes the core log the real error (shown as `core:`). */
+    private suspend fun diagnoseProfiles(b: Map<String, Node>, tier: Map<String, Int>) {
+        b.keys.forEachIndexed { i, tag ->
+            if (tier[tag] != 2) return@forEachIndexed
+            scope.launch(Dispatchers.IO) {
+                val r = runCatching {
+                    val c = URL("https://cp.cloudflare.com/generate_204").openConnection(
+                        java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress("127.0.0.1", app.chainproxy.chain.diagPort(cfg, i)))) as HttpURLConnection
+                    c.connectTimeout = 8000; c.readTimeout = 8000; c.setRequestProperty("Connection", "close")
+                    try { c.responseCode } finally { c.disconnect() }
+                }
+                log("[diag] $tag: " + r.fold({ "HTTP $it" }, { "${it.javaClass.simpleName}: ${it.message}".take(160) }))
             }
         }
     }

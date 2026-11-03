@@ -19,6 +19,7 @@ import kotlin.coroutines.coroutineContext
 /** What the app needs from the running sing-box: delay tests per outbound and switching the selector. */
 interface CoreApi {
     suspend fun delay(tag: String, url: String, timeoutMs: Int): Double?
+    fun lastError(tag: String): String? = null
     suspend fun select(tag: String)
 }
 
@@ -99,6 +100,10 @@ class RouteManager(
         idx = -1
         log("${rank.size} routes usable (${ordered(chains, res).size} chains, ${ordered(exitTags, res).size} B-only, " +
             "${ordered(firstTags, res).size} A-only)")
+        val dead = (chains + exitTags + firstTags).filter { res[it] == null }
+        if (dead.isNotEmpty()) log("  no answer to the delay test: " + dead.take(12).joinToString(", ") { label(it) } +
+            if (dead.size > 12) " (+${dead.size - 12} more)" else "")
+        dead.take(6).forEach { t -> core.lastError(t)?.let { log("    $t: ${it.take(200)}") } }
         publish()
     }
 

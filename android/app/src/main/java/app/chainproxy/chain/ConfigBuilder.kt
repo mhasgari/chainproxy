@@ -67,6 +67,9 @@ fun buildConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, mo
     }
 }
 
+/** Loopback port of the diagnostic inbound that sends everything straight into exit node [index] (see [androidConfig]). */
+fun diagPort(cfg: ChainConfig, index: Int) = cfg.mixedPort + 100 + index
+
 /**
  * The same configuration plus what a phone needs: a TUN inbound that captures every app (VpnService), traffic
  * sniffing (so domain rules work for IP connections), DNS hijack, and name resolution THROUGH the chain
@@ -88,6 +91,8 @@ fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, 
         add(buildJsonObject { put("protocol", "dns"); put("action", "hijack-dns") })
         // QUIC (UDP 443) cannot go through a SOCKS/TCP-based chain; refusing it makes Chrome and Google apps fall back to TCP at once
         add(buildJsonObject { put("network", "udp"); put("port", 443); put("action", "reject") })
+        // one loopback inbound per exit node: a request through it shows the node's real connection error in the core log
+        b.keys.forEachIndexed { i, tag -> add(buildJsonObject { putJsonArray("inbound") { add(JsonPrimitive("diag-$i")) }; put("action", "route"); put("outbound", tag) }) }
         (route.getValue("rules") as JsonArray).forEach { add(it) }
     }
     val dnsRules = buildJsonArray {
@@ -114,7 +119,8 @@ fun androidConfig(cfg: ChainConfig, a: Map<String, Node>, b: Map<String, Node>, 
     }
     return JsonObject(base + mapOf(
         "log" to log,
-        "inbounds" to JsonArray(listOf(tun) + (base.getValue("inbounds") as JsonArray)),
+        "inbounds" to JsonArray(listOf(tun) + (base.getValue("inbounds") as JsonArray) + b.keys.mapIndexed { i, _ ->
+            buildJsonObject { put("type", "mixed"); put("tag", "diag-$i"); put("listen", "127.0.0.1"); put("listen_port", diagPort(cfg, i)) } }),
         "route" to JsonObject(route + mapOf("rules" to rules, "auto_detect_interface" to JsonPrimitive(true))),
         "dns" to dns,
     ))
